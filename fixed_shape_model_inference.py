@@ -18,8 +18,8 @@ input = cv2.cvtColor(input, cv2.COLOR_BGR2GRAY) # (28, 28)
 input = input[np.newaxis, np.newaxis, :, :] # (1, 1, 28, 28)
 input = input.astype(np.float32) / 255.0
 
-result = model.run(None, {model_input_name: input}) # list of numpy.ndarray
-result = result[0] # logits
-result = softmax(result) # softmax
+output = model.run(None, {model_input_name: input}) # list of numpy.ndarray
+output = output[0] # logits
+output = softmax(output) # softmax
 
-print(f"result: {result}, predicted number: {np.argmax(result)}, predicted probability: {np.max(result)}")
+print(f"output: {output}, predicted number: {np.argmax(output)}, predicted probability: {np.max(output)}")
