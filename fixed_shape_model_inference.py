@@ -5,7 +5,8 @@ import numpy as np
 np.set_printoptions(suppress=True) # suppress scientific notation
 
 def softmax(x):
-    return(np.exp(x)/np.exp(x).sum())
+    e_x = np.exp(x - np.max(x))
+    return e_x / e_x.sum()
 
 model = onnxruntime.InferenceSession("mnist-12.onnx", providers=["CUDAExecutionProvider"])
 model_input_shape = model.get_inputs()[0].shape
