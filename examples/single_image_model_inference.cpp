@@ -153,9 +153,10 @@ public:
     image_float32 /= 255.0f;
 
     // Mat to vector<float>
+    cv::dnn::blobFromImage(image_float32, image_float32); // is it safe?
     std::vector<float> input_tensor_values(width * height, 0);
-    input_tensor_values.assign((float *)image_float32.datastart,
-                               (float *)image_float32.dataend);
+    input_tensor_values.assign(image_float32.begin<float>(),
+                               image_float32.end<float>());
     return input_tensor_values;
   }
 
