@@ -17,7 +17,7 @@ sudo docker run -it --runtime=nvidia --gpus all onnxruntime-cuda:1.0
 
 (on a container)
 ```
-cd build
+cd ./build/examples/
 ./single_image_model_inference
 ./fixed_batch_image_model_inference
 ./dynamic_batch_image_model_inference
