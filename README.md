@@ -13,6 +13,8 @@ docker build . -t onnxruntime-cuda:1.0
 sudo docker run -it --runtime=nvidia --gpus all onnxruntime-cuda:1.0
 ```
 
+# Run
+
 (on a container)
 ```
 cd build
