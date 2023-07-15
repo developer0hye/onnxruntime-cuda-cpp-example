@@ -64,7 +64,7 @@ class OnnxModel {
 private:
   Ort::Env env;
   Ort::SessionOptions session_options;
-  Ort::Session session;
+  Ort::Session session{nullptr};
   Ort::AllocatorWithDefaultOptions allocator;
   std::vector<std::string> input_names;
   std::vector<std::int64_t> input_shapes;
@@ -72,12 +72,29 @@ private:
 
   std::vector<const char *> input_names_char;
   std::vector<const char *> output_names_char;
+  int gpu_id;
 
 public:
   // Initialize OnnxModel
-  OnnxModel(const std::string &model_file)
+  OnnxModel(const std::string &model_file, bool use_cuda = false,
+            int gpu_id = 0)
       : env(ORT_LOGGING_LEVEL_WARNING, "single_image_model_inference"),
-        session(env, model_file.c_str(), session_options) {
+        gpu_id(gpu_id) {
+
+    if (use_cuda) {
+      Ort::ThrowOnError(OrtSessionOptionsAppendExecutionProvider_CUDA(
+          session_options, gpu_id));
+    }
+
+    // Sets graph optimization level
+    // Available levels are
+    // ORT_DISABLE_ALL -> To disable all optimizations
+    // ORT_ENABLE_BASIC -> To enable basic optimizations (Such as redundant node removals)
+    // ORT_ENABLE_EXTENDED -> To enable extended optimizations (Includes level 1 + more complex optimizations like node fusions)
+    // ORT_ENABLE_ALL -> To Enable All possible opitmizations
+    session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_EXTENDED);
+
+    session = Ort::Session(env, model_file.c_str(), session_options);
     setup();
   }
 
@@ -185,43 +202,57 @@ public:
 
 int main(int argc, char *argv[]) {
   std::string model_file = "/app/models/mnist-12.onnx";
-  OnnxModel model(model_file);
   const std::vector<std::string> filenames = {"0.png", "7.png", "8.png", "9.png"};
 
   // Add expected output vector.
   const std::vector<int> expected_output_vector = {0, 7, 8, 9};
 
   bool test_passed = true;
+  std::chrono::duration<double> diff_cpu, diff_gpu;
 
-  for (int i = 0; i < 100; i++) {
-    for (size_t j = 0; j < filenames.size(); ++j) {
-      cv::Mat input = cv::imread("/app/imgs/" + filenames[j]);
-      auto output = model(input); // softmax values
+  for (bool use_cuda:{false, true})
+  {
+    OnnxModel model(model_file, use_cuda);
+    auto start = std::chrono::high_resolution_clock::now(); // start timing
+    for (int i = 0; i < 100; i++) {
+      for (size_t j = 0; j < filenames.size(); ++j) {
+        cv::Mat input = cv::imread("/app/imgs/" + filenames[j]);
+        auto output = model(input); // softmax values
 
-      std::cout << "Output softmax values:\n";
-      for (float val : output) {
-        std::cout << val << " ";
-      }
+        std::cout << "Output softmax values:\n";
+        for (float val : output) {
+          std::cout << val << " ";
+        }
 
-      int max_index = argmax(output);
+        int max_index = argmax(output);
 
-      std::cout << "\nArgmax index: " << max_index << std::endl;
-      std::cout << "Max probability: " << output[max_index] << std::endl;
+        std::cout << "\nArgmax index: " << max_index << std::endl;
+        std::cout << "Max probability: " << output[max_index] << std::endl;
 
-      // Compare the expected and the actual output.
-      if (max_index != expected_output_vector[j]) {
-        test_passed = false;
-        std::cerr << "Test failed! For file " << filenames[j]
-                  << ", expected: " << expected_output_vector[j]
-                  << ", but got: " << max_index << std::endl;
+        // Compare the expected and the actual output.
+        if (max_index != expected_output_vector[j]) {
+          test_passed = false;
+          std::cerr << "Test failed! For file " << filenames[j]
+                    << ", expected: " << expected_output_vector[j]
+                    << ", but got: " << max_index << std::endl;
+        }
       }
     }
+
+    auto end = std::chrono::high_resolution_clock::now(); // end timing
+
+    if (use_cuda)
+      diff_gpu = end - start;
+    else
+      diff_cpu = end - start;
   }
+
+  std::cout << "Execution time using CPU: " << diff_cpu.count() << " s\n";
+  std::cout << "Execution time using GPU: " << diff_gpu.count() << " s\n";
 
   if (test_passed) {
     std::cout << "\033[32mAll tests passed successfully.\033[0m" << std::endl;
-  } else
-  {
+  } else {
     std::cout << "\033[31mSome tests failed.\033[0m" << std::endl;
     return -1;
   }
