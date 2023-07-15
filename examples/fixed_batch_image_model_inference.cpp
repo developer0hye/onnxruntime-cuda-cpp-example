@@ -267,13 +267,18 @@ int main(int argc, char *argv[]) {
 
   for (bool use_cuda : {false, true}) {
     OnnxModel model(model_file, use_cuda);
-    auto start = std::chrono::high_resolution_clock::now(); // start timing
 
     std::vector<cv::Mat> images;
     for (auto filename : filenames) {
       images.push_back(cv::imread("/app/imgs/" + filename));
     }
 
+    // Warm up the model for a gpu
+    model(images);
+    model(images);
+    model(images);
+
+    auto start = std::chrono::high_resolution_clock::now(); // start timing
     for (int i = 0; i < 100; i++) {
       auto batch_output = model(images); // softmax values
       for (int j = 0; j < batch_output.size(); j++) {
