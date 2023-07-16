@@ -4,6 +4,15 @@ I am still working on this...
 
 Will it be finished?
 
+# Examples
+
+- Image Classification
+    - single_image_model_inference
+    - fixed_batch_image_model_inference
+    - dynamic_batch_image_model_inference
+- Object Detection
+    - dynamic_batch_yolov8(still working)
+
 # Setup
 
 ```bash
