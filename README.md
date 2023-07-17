@@ -12,7 +12,9 @@ Will it be finished?
     - dynamic_batch_image_model_inference
 - Object Detection
     - dynamic_batch_yolov8
-    
+- Utilities
+    - parse_metadata
+
 # Setup
 
 ```bash
