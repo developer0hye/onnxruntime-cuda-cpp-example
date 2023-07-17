@@ -12,9 +12,6 @@
 #include <tuple>
 #include <vector>
 
-int argmax(const std::vector<float> &v) {
-  return std::distance(v.begin(), std::max_element(v.begin(), v.end()));
-}
 
 float iou(const std::vector<float> &boxA, const std::vector<float> &boxB) {
   // The format of box is [top_left_x, top_left_y, bottom_right_x,
