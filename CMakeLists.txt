@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.22)
 
 project(onnxruntime-cuda-cpp-example)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 
 message("ENV ONNXRUNTIME_VERSION = $ENV{ONNXRUNTIME_VERSION}")
 message("ENV OPENCV_VERSION = $ENV{OPENCV_VERSION}")

@@ -11,8 +11,8 @@ Will it be finished?
     - fixed_batch_image_model_inference
     - dynamic_batch_image_model_inference
 - Object Detection
-    - dynamic_batch_yolov8(still working)
-
+    - dynamic_batch_yolov8
+    
 # Setup
 
 ```bash
