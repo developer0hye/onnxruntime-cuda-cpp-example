@@ -9,66 +9,65 @@
 #include <opencv2/opencv.hpp>
 #include <sstream>
 #include <string>
-#include <vector>
 #include <tuple>
+#include <vector>
 
 int argmax(const std::vector<float> &v) {
   return std::distance(v.begin(), std::max_element(v.begin(), v.end()));
 }
 
-float iou(const std::vector<float>& boxA, const std::vector<float>& boxB)
-{
-    // The format of box is [top_left_x, top_left_y, bottom_right_x, bottom_right_y]
-    const float eps = 1e-6;
-    float iou = 0.f;
-    float areaA = (boxA[2] - boxA[0]) * (boxA[3] - boxA[1]);
-    float areaB = (boxB[2] - boxB[0]) * (boxB[3] - boxB[1]);
-    float x1 = std::max(boxA[0], boxB[0]);
-    float y1 = std::max(boxA[1], boxB[1]);
-    float x2 = std::min(boxA[2], boxB[2]);
-    float y2 = std::min(boxA[3], boxB[3]);
-    float w = std::max(0.f, x2 - x1);
-    float h = std::max(0.f, y2 - y1);
-    float inter = w * h;
-    iou = inter / (areaA + areaB - inter + eps);
-    return iou;
+float iou(const std::vector<float> &boxA, const std::vector<float> &boxB) {
+  // The format of box is [top_left_x, top_left_y, bottom_right_x,
+  // bottom_right_y]
+  const float eps = 1e-6;
+  float iou = 0.f;
+  float areaA = (boxA[2] - boxA[0]) * (boxA[3] - boxA[1]);
+  float areaB = (boxB[2] - boxB[0]) * (boxB[3] - boxB[1]);
+  float x1 = std::max(boxA[0], boxB[0]);
+  float y1 = std::max(boxA[1], boxB[1]);
+  float x2 = std::min(boxA[2], boxB[2]);
+  float y2 = std::min(boxA[3], boxB[3]);
+  float w = std::max(0.f, x2 - x1);
+  float h = std::max(0.f, y2 - y1);
+  float inter = w * h;
+  iou = inter / (areaA + areaB - inter + eps);
+  return iou;
 }
 
-void nms(std::vector<std::vector<float>>& boxes, const float iou_threshold)
-{
-    // The format of boxes is [[top_left_x, top_left_y, bottom_right_x, bottom_right_y, score, class_id], ...]
-    // Sorting "score + class_id" is to ensure that the boxes with the same class_id are grouped together and sorted by score
-    std::sort(boxes.begin(), boxes.end(), [](const std::vector<float>& boxA, const std::vector<float>& boxB) { return boxA[4] + boxA[5] > boxB[4] + boxB[5];});
-    for (int i = 0; i < boxes.size(); ++i)
-    {
-        if (boxes[i][4] == 0.f)
-        {
-            continue;
-        }
-        for (int j = i + 1; j < boxes.size(); ++j)
-        {
-            if (boxes[i][5] != boxes[j][5])
-            {
-                break;
-            }
-            if (iou(boxes[i], boxes[j]) > iou_threshold)
-            {
-                boxes[j][4] = 0.f;
-            }
-        }
+void nms(std::vector<std::vector<float>> &boxes, const float iou_threshold) {
+  // The format of boxes is [[top_left_x, top_left_y, bottom_right_x,
+  // bottom_right_y, score, class_id], ...] Sorting "score + class_id" is to
+  // ensure that the boxes with the same class_id are grouped together and
+  // sorted by score
+  std::sort(boxes.begin(), boxes.end(),
+            [](const std::vector<float> &boxA, const std::vector<float> &boxB) {
+              return boxA[4] + boxA[5] > boxB[4] + boxB[5];
+            });
+  for (int i = 0; i < boxes.size(); ++i) {
+    if (boxes[i][4] == 0.f) {
+      continue;
     }
-    std::erase_if(boxes, [](const std::vector<float>& box) { return box[4] == 0.f; });
+    for (int j = i + 1; j < boxes.size(); ++j) {
+      if (boxes[i][5] != boxes[j][5]) {
+        break;
+      }
+      if (iou(boxes[i], boxes[j]) > iou_threshold) {
+        boxes[j][4] = 0.f;
+      }
+    }
+  }
+  std::erase_if(boxes,
+                [](const std::vector<float> &box) { return box[4] == 0.f; });
 }
 
 std::vector<std::vector<float>> postprocess(
-  const std::vector<float> &tensor_values, //[num_outputs x num_anchors]
-  const std::vector<std::int64_t> &input_shape,
-  const std::vector<std::int64_t> &pad_hw,
-  const std::vector<std::int64_t> &output_shape,
-  const float score_threshold = 0.25f,
-  const float nms_iou_threshold = 0.45f
-  ) {
-  
+    const std::vector<float> &tensor_values, //[num_outputs x num_anchors]
+    const std::vector<std::int64_t> &input_shape,
+    const std::vector<std::int64_t> &pad_hw,
+    const std::vector<std::int64_t> &output_shape,
+    const float score_threshold = 0.25f,
+    const float nms_iou_threshold = 0.45f) {
+
   /*
   tensor_values:
 
@@ -83,7 +82,7 @@ std::vector<std::vector<float>> postprocess(
   cM1 cM2 cM3 cM4 ... cMN
 
   transposed_tensor_values:
-  
+
   cx1 cy1 w1 h1 c11 c21 c31 ... cM1
   cx2 cy2 w2 h2 c12 c22 c32 ... cM2
   cx3 cy3 w3 h3 c13 c23 c33 ... cM3
@@ -92,46 +91,55 @@ std::vector<std::vector<float>> postprocess(
 
   bboxes:
 
-  top_left_x1 top_left_y1 bottom_right_x1 bottom_right_y1 max_score1 max_score_index1
-  top_left_x2 top_left_y2 bottom_right_x2 bottom_right_y2 max_score2 max_score_index2
+  top_left_x1 top_left_y1 bottom_right_x1 bottom_right_y1 max_score1
+  max_score_index1 top_left_x2 top_left_y2 bottom_right_x2 bottom_right_y2
+  max_score2 max_score_index2
   ...
-  top_left_xN top_left_yN bottom_right_xN bottom_right_yN max_scoreN max_score_indexN
+  top_left_xN top_left_yN bottom_right_xN bottom_right_yN max_scoreN
+  max_score_indexN
   */
 
-  std::vector<float> transposed_tensor_values(tensor_values.size());  //[num_anchors x num_outputs]
-  auto num_outputs = output_shape[1]; // 4 + num_classes, [x1, y1, w, h, class1_score, class2_score, ...]
+  std::vector<float> transposed_tensor_values(
+      tensor_values.size());          //[num_anchors x num_outputs]
+  auto num_outputs = output_shape[1]; // 4 + num_classes, [x1, y1, w, h,
+                                      // class1_score, class2_score, ...]
   auto num_anchors = output_shape[2];
 
   for (std::size_t i = 0; i < num_anchors; i++) {
     for (std::size_t j = 0; j < num_outputs; j++) {
-      transposed_tensor_values[i * num_outputs + j] = tensor_values[j * num_anchors + i];
+      transposed_tensor_values[i * num_outputs + j] =
+          tensor_values[j * num_anchors + i];
     }
   }
 
   const int boxes_num_outputs = 6;
   std::vector<std::vector<float>> boxes;
-  for(int i = 0; i < num_anchors; i++)
-  {
+  for (int i = 0; i < num_anchors; i++) {
     float max_score = 0.0f;
     int max_score_index = 0;
-    for(int j = 4; j < num_outputs; j++)
-    {
-      if(transposed_tensor_values[i * num_outputs + j] > max_score)
-      {
+    for (int j = 4; j < num_outputs; j++) {
+      if (transposed_tensor_values[i * num_outputs + j] > max_score) {
         max_score = transposed_tensor_values[i * num_outputs + j];
         max_score_index = j;
       }
     }
 
-    if(max_score < score_threshold)
-    {
+    if (max_score < score_threshold) {
       continue;
     }
 
-    float cx = transposed_tensor_values[i * num_outputs + 0]/(static_cast<float>(input_shape[3]) - static_cast<float>(pad_hw[1]));
-    float cy = transposed_tensor_values[i * num_outputs + 1]/(static_cast<float>(input_shape[2]) - static_cast<float>(pad_hw[0]));
-    float w = transposed_tensor_values[i * num_outputs + 2]/(static_cast<float>(input_shape[3]) - static_cast<float>(pad_hw[1]));
-    float h = transposed_tensor_values[i * num_outputs + 3]/(static_cast<float>(input_shape[2]) - static_cast<float>(pad_hw[0]));
+    float cx =
+        transposed_tensor_values[i * num_outputs + 0] /
+        (static_cast<float>(input_shape[3]) - static_cast<float>(pad_hw[1]));
+    float cy =
+        transposed_tensor_values[i * num_outputs + 1] /
+        (static_cast<float>(input_shape[2]) - static_cast<float>(pad_hw[0]));
+    float w =
+        transposed_tensor_values[i * num_outputs + 2] /
+        (static_cast<float>(input_shape[3]) - static_cast<float>(pad_hw[1]));
+    float h =
+        transposed_tensor_values[i * num_outputs + 3] /
+        (static_cast<float>(input_shape[2]) - static_cast<float>(pad_hw[0]));
 
     float x1 = std::clamp(cx - w / 2., 0., 1.);
     float y1 = std::clamp(cy - h / 2., 0., 1.);
@@ -183,8 +191,7 @@ public:
   OnnxModel(const std::string &model_file, bool use_cuda = false,
             int gpu_id = 0)
       : env(ORT_LOGGING_LEVEL_WARNING, "single_image_model_inference"),
-        gpu_id(gpu_id),
-        num_classes(0) {
+        gpu_id(gpu_id), num_classes(0) {
 
     if (use_cuda) {
       Ort::ThrowOnError(OrtSessionOptionsAppendExecutionProvider_CUDA(
@@ -249,8 +256,8 @@ public:
 
     std::cout << "Output names: " << output_names[0] << std::endl;
     std::cout << "Output shape: " << print_shape(output_shape) << std::endl;
-    std::cout << "Total number of elements: "
-              << calculate_product(output_shape) << std::endl;
+    std::cout << "Total number of elements: " << calculate_product(output_shape)
+              << std::endl;
 
     // pass data through model
     input_names_char.resize(input_names.size());
@@ -267,45 +274,54 @@ public:
   void fetch_model_metadata() {
     // Fetch model metadata
     auto model_metadata = session.GetModelMetadata();
-    auto custom_metadata_map_keys = model_metadata.GetCustomMetadataMapKeysAllocated(allocator);
+    auto custom_metadata_map_keys =
+        model_metadata.GetCustomMetadataMapKeysAllocated(allocator);
     std::cout << "Model Metadata: " << std::endl;
     for (auto &key : custom_metadata_map_keys) {
       std::string key_str = key.get();
-      std::string value_str = model_metadata.LookupCustomMetadataMapAllocated(key_str.c_str(), allocator).get();
+      std::string value_str =
+          model_metadata
+              .LookupCustomMetadataMapAllocated(key_str.c_str(), allocator)
+              .get();
       std::cout << "key: " << key_str << " value: " << value_str << std::endl;
       if (key_str == "names") {
         std::stringstream ss(value_str);
         std::string item;
         while (std::getline(ss, item, ',')) {
-            int key;
-            std::string value;
-            std::stringstream pairStream(item);
-            std::string pairItem;
-            
-            if (std::getline(pairStream, pairItem, ':')) {
-                pairItem.erase(std::remove(pairItem.begin(), pairItem.end(), '{'), pairItem.end());
-                pairItem.erase(std::remove(pairItem.begin(), pairItem.end(), ' '), pairItem.end());
-                key = stoi(pairItem);
-            }
+          int key;
+          std::string value;
+          std::stringstream pairStream(item);
+          std::string pairItem;
 
-            if (std::getline(pairStream, pairItem, ':')) {
-                pairItem.erase(std::remove(pairItem.begin(), pairItem.end(), '\''), pairItem.end());
-                pairItem.erase(std::remove(pairItem.begin(), pairItem.end(), ' '), pairItem.end());
-                pairItem.erase(std::remove(pairItem.begin(), pairItem.end(), '}'), pairItem.end());
-                value = pairItem;
-            }
+          if (std::getline(pairStream, pairItem, ':')) {
+            pairItem.erase(std::remove(pairItem.begin(), pairItem.end(), '{'),
+                           pairItem.end());
+            pairItem.erase(std::remove(pairItem.begin(), pairItem.end(), ' '),
+                           pairItem.end());
+            key = stoi(pairItem);
+          }
 
-            class_map.insert(std::make_pair(key, value));
+          if (std::getline(pairStream, pairItem, ':')) {
+            pairItem.erase(std::remove(pairItem.begin(), pairItem.end(), '\''),
+                           pairItem.end());
+            pairItem.erase(std::remove(pairItem.begin(), pairItem.end(), ' '),
+                           pairItem.end());
+            pairItem.erase(std::remove(pairItem.begin(), pairItem.end(), '}'),
+                           pairItem.end());
+            value = pairItem;
+          }
+
+          class_map.insert(std::make_pair(key, value));
         }
         num_classes = class_map.size();
-      } else if(key_str == "imgsz") {
+      } else if (key_str == "imgsz") {
         std::stringstream ss(value_str);
         std::string item;
         while (std::getline(ss, item, ',')) {
-            item.erase(std::remove(item.begin(), item.end(), '['), item.end());
-            item.erase(std::remove(item.begin(), item.end(), ']'), item.end());
+          item.erase(std::remove(item.begin(), item.end(), '['), item.end());
+          item.erase(std::remove(item.begin(), item.end(), ']'), item.end());
 
-            imgsz.push_back(std::stoi(item));
+          imgsz.push_back(std::stoi(item));
         }
       }
     }
@@ -324,7 +340,8 @@ public:
     std::cout << std::endl;
   }
 
-  std::tuple<std::vector<float>, std::vector<std::vector<int64_t>>> preprocess(const std::vector<cv::Mat> &images) {
+  std::tuple<std::vector<float>, std::vector<std::vector<int64_t>>>
+  preprocess(const std::vector<cv::Mat> &images) {
     input_shape[0] = images.size();
 
     if (input_shape.size() != 4) {
@@ -359,20 +376,23 @@ public:
       int old_height = image.rows;
       int old_width = image.cols;
 
-      float r = std::min(static_cast<float>(height) / old_height, static_cast<float>(width) / old_width);
+      float r = std::min(static_cast<float>(height) / old_height,
+                         static_cast<float>(width) / old_width);
       r = std::min(r, 1.0f);
 
       int new_height = static_cast<int>(old_height * r);
       int new_width = static_cast<int>(old_width * r);
 
-      cv::resize(image, image, cv::Size(new_width, new_height), cv::INTER_LINEAR);
+      cv::resize(image, image, cv::Size(new_width, new_height),
+                 cv::INTER_LINEAR);
 
       int top = 0, bottom = 0, left = 0, right = 0;
       bottom = height - new_height;
       right = width - new_width;
-      
-      cv::copyMakeBorder(image, image, top, bottom, left, right, cv::BORDER_CONSTANT, cv::Scalar(114, 114, 114));
-      
+
+      cv::copyMakeBorder(image, image, top, bottom, left, right,
+                         cv::BORDER_CONSTANT, cv::Scalar(114, 114, 114));
+
       assert(image.rows == height && image.cols == width);
       batch_pad_hw.push_back({bottom, right});
 
@@ -417,7 +437,7 @@ public:
           session.Run(Ort::RunOptions{nullptr}, input_names_char.data(),
                       input_tensors.data(), input_names_char.size(),
                       output_names_char.data(), output_names_char.size());
-      
+
       // double-check the dimensions of the output tensors
       // NOTE: the number of output tensors is equal to the number of output
       // nodes specifed in the Run() call
@@ -427,7 +447,7 @@ public:
       // Convert the output tensor to a vector
       auto *output_tensor =
           output_tensors.front().GetTensorMutableData<float>();
-      
+
       Ort::TypeInfo output_type_info = output_tensors.front().GetTypeInfo();
       auto output_tensor_info = output_type_info.GetTensorTypeAndShapeInfo();
       output_shape = output_tensor_info.GetShape();
@@ -436,17 +456,19 @@ public:
       auto num_anchors = output_shape[2];
 
       std::vector<float> flatten_batch_output_tensor_values(
-          output_tensor,
-          output_tensor + calculate_product(output_shape));
+          output_tensor, output_tensor + calculate_product(output_shape));
 
       std::vector<std::vector<std::vector<float>>> batch_output_tensor_values;
       for (std::size_t i = 0; i < images.size(); i++) {
         std::vector<float> output_tensor_values(
-            flatten_batch_output_tensor_values.begin() + (i * num_outputs * num_anchors),
-            flatten_batch_output_tensor_values.begin() + ((i + 1) * num_outputs * num_anchors));
-        std::cout << "Output tensor values size: " << output_tensor_values.size() << std::endl;
-        batch_output_tensor_values.emplace_back(
-            postprocess(output_tensor_values, input_shape, batch_pad_hw[i], output_shape));
+            flatten_batch_output_tensor_values.begin() +
+                (i * num_outputs * num_anchors),
+            flatten_batch_output_tensor_values.begin() +
+                ((i + 1) * num_outputs * num_anchors));
+        std::cout << "Output tensor values size: "
+                  << output_tensor_values.size() << std::endl;
+        batch_output_tensor_values.emplace_back(postprocess(
+            output_tensor_values, input_shape, batch_pad_hw[i], output_shape));
       }
 
       return batch_output_tensor_values;
@@ -457,9 +479,7 @@ public:
     }
   }
 
-  std::string get_class_name(int class_id) {
-    return class_map[class_id];
-  }
+  std::string get_class_name(int class_id) { return class_map[class_id]; }
 };
 
 int main(int argc, char *argv[]) {
@@ -485,8 +505,7 @@ int main(int argc, char *argv[]) {
     model(images);
 
     auto start = std::chrono::high_resolution_clock::now(); // start timing
-    for (int i = 0; i < 100; i++)
-    {
+    for (int i = 0; i < 100; i++) {
       auto batch_output = model(images);
       for (int j = 0; j < batch_output.size(); j++) {
         auto output = batch_output[j];
@@ -501,13 +520,21 @@ int main(int argc, char *argv[]) {
           int class_id = output[k][5];
 
           std::string class_name = model.get_class_name(class_id);
-          std::string class_name_and_score = class_name + " " + std::to_string(score);
+          std::string class_name_and_score =
+              class_name + " " + std::to_string(score);
 
-          std::cout << "x1: " << x1 << " y1: " << y1 << " x2: " << x2 << " y2: " << y2 << " score: " << score << " class_id: " << class_id << " class_name: " << class_name << std::endl;
-          
-          // draw bounding box on the same image several times to check the result is consistent
-          cv::rectangle(images_visualization[j], cv::Point(x1, y1), cv::Point(x2, y2), cv::Scalar(0, 255, 0), 2);
-          cv::putText(images_visualization[j], class_name_and_score, cv::Point(x1, y1), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 1, cv::LINE_AA);
+          std::cout << "x1: " << x1 << " y1: " << y1 << " x2: " << x2
+                    << " y2: " << y2 << " score: " << score
+                    << " class_id: " << class_id
+                    << " class_name: " << class_name << std::endl;
+
+          // draw bounding box on the same image several times to check the
+          // result is consistent
+          cv::rectangle(images_visualization[j], cv::Point(x1, y1),
+                        cv::Point(x2, y2), cv::Scalar(0, 255, 0), 2);
+          cv::putText(images_visualization[j], class_name_and_score,
+                      cv::Point(x1, y1), cv::FONT_HERSHEY_SIMPLEX, 0.5,
+                      cv::Scalar(0, 255, 0), 1, cv::LINE_AA);
         }
       }
     }
@@ -519,8 +546,11 @@ int main(int argc, char *argv[]) {
       diff_cpu = end - start;
 
     for (int i = 0; i < images_visualization.size(); i++) {
-      std::string filename_without_ext = filenames[i].substr(0, filenames[i].find_last_of("."));
-      cv::imwrite("/app/imgs/" + filename_without_ext + "_output_" + (use_cuda ? "gpu" : "cpu") + ".jpg", images_visualization[i]);
+      std::string filename_without_ext =
+          filenames[i].substr(0, filenames[i].find_last_of("."));
+      cv::imwrite("/app/imgs/" + filename_without_ext + "_output_" +
+                      (use_cuda ? "gpu" : "cpu") + ".jpg",
+                  images_visualization[i]);
     }
   }
 
