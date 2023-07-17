@@ -466,7 +466,6 @@ int main(int argc, char *argv[]) {
   std::string model_file = "/app/models/yolov8n.onnx";
   const std::vector<std::string> filenames = {"bus.jpg", "zidane.jpg"};
 
-  bool test_passed = true;
   std::chrono::duration<double> diff_cpu, diff_gpu;
 
   for (bool use_cuda : {false, true}) {
@@ -527,13 +526,6 @@ int main(int argc, char *argv[]) {
 
   std::cout << "Execution time using CPU: " << diff_cpu.count() << " s\n";
   std::cout << "Execution time using GPU: " << diff_gpu.count() << " s\n";
-
-  if (test_passed) {
-    std::cout << "\033[32mAll tests passed successfully.\033[0m" << std::endl;
-  } else {
-    std::cout << "\033[31mSome tests failed.\033[0m" << std::endl;
-    return -1;
-  }
 
   return 0;
 }
