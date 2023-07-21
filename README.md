@@ -29,7 +29,6 @@ sudo docker run -it --runtime=nvidia --gpus all onnxruntime-cuda:1.0
 # Run
 
 (on a container)
-```
-cd ./build/examples/
+```bash
 ./{example_you_want_to_run}
 ```
