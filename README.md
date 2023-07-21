@@ -12,8 +12,10 @@ Will it be finished?
     - dynamic_batch_image_model_inference
 - Object Detection
     - dynamic_batch_yolov8
+    - dynamic_batch_yolov8_with_cuda_based_opencv_image_preprocessing
 - Utilities
     - parse_metadata
+    - cuda_based_opencv_image_preprocessing
 
 # Setup
 
@@ -29,7 +31,5 @@ sudo docker run -it --runtime=nvidia --gpus all onnxruntime-cuda:1.0
 (on a container)
 ```
 cd ./build/examples/
-./single_image_model_inference
-./fixed_batch_image_model_inference
-./dynamic_batch_image_model_inference
+./{example_you_want_to_run}
 ```
