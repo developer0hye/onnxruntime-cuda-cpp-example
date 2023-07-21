@@ -50,9 +50,11 @@ RUN \
 RUN mkdir /app/
 COPY . /app/
 
-WORKDIR /app/
 RUN \
+    cd app && \
     mkdir build && \
     cd build && \
     cmake -D CMAKE_BUILD_TYPE=Release .. && \
     cmake --build . --config Release
+
+WORKDIR /app/build/examples
