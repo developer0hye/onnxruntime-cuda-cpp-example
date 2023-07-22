@@ -584,6 +584,14 @@ int main(int argc, char *argv[]) {
   std::string model_file = "/app/models/yolov8n.onnx";
   const std::vector<std::string> filenames = {"bus.jpg", "zidane.jpg"};
 
+  std::vector<cv::Mat> images, images_visualization;
+  for (int i = 0; i < 1; i++) {
+    for (auto filename : filenames) {
+      images.push_back(cv::imread("/app/imgs/" + filename));
+      images_visualization.push_back(cv::imread("/app/imgs/" + filename));
+    }
+  }
+
   std::chrono::duration<double> diff_cpu, diff_gpu,
       diff_gpu_with_cuda_based_opencv_image_preprocessing;
 
@@ -592,14 +600,6 @@ int main(int argc, char *argv[]) {
                                       ? std::vector<bool>{false}
                                       : std::vector<bool>{false, true}) {
       OnnxModel model(model_file, use_cuda, preprocess_on_gpu);
-
-      std::vector<cv::Mat> images, images_visualization;
-      for (int i = 0; i < 1; i++) {
-        for (auto filename : filenames) {
-          images.push_back(cv::imread("/app/imgs/" + filename));
-          images_visualization.push_back(cv::imread("/app/imgs/" + filename));
-        }
-      }
 
       // Warm up the model for a gpu
       model(images);
