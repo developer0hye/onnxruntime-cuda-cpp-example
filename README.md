@@ -13,6 +13,10 @@ Will it be finished?
 - Object Detection
     - dynamic_batch_yolov8
     - dynamic_batch_yolov8_with_cuda_based_opencv_image_preprocessing
+    - dynamic_batch_yolov8_single_video_single_frame_inference
+    - dynamic_batch_yolov8_single_video_multiple_frames_inference
+    - dynamic_batch_yolov8_multiple_videos_inference_per_video(not yet implemented)
+    - dynamic_batch_yolov8_multiple_videos_parallel_inference_with_queue(not yet implemented)
 - Utilities
     - parse_metadata
     - cuda_based_opencv_image_preprocessing
