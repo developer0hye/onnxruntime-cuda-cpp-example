@@ -93,6 +93,20 @@ RUN \
     make -j$(nproc) && \
     make install
 
+# Install Libraires for TensorRT
+RUN \
+    apt-get update && \
+    apt-get install -y libnvinfer8=8.5.3-1+cuda11.8 \
+                libnvinfer-plugin8=8.5.3-1+cuda11.8 \
+                libnvparsers8=8.5.3-1+cuda11.8 \
+                libnvonnxparsers8=8.5.3-1+cuda11.8 \
+                libnvinfer-bin=8.5.3-1+cuda11.8 \
+                libnvinfer-dev=8.5.3-1+cuda11.8 \
+                libnvinfer-plugin-dev=8.5.3-1+cuda11.8 \
+                libnvparsers-dev=8.5.3-1+cuda11.8 \
+                libnvonnxparsers-dev=8.5.3-1+cuda11.8 \
+                libnvinfer-samples=8.5.3-1+cuda11.8
+
 RUN mkdir /app/
 COPY . /app/
 
